@@ -37,9 +37,34 @@ class CartController extends Controller
 
     public function add_to_cart(Request $request)
     {
-        // $productuu=new Product();{{ number_format($order->subtotal, 2) }} for display
-        Cart::instance('cart')->add($request->id, $request->name, $request->quantity, $request->price)->associate((string) "App\Models\Product");
-        return redirect()->back();
+        $requiresVariants = $request->boolean('has_variants');
+
+        $request->validate([
+            'id' => ['required', 'integer', 'exists:products,id'],
+            'quantity' => ['nullable', 'integer', 'min:1'],
+            'has_variants' => ['nullable', 'boolean'],
+            'color' => [$requiresVariants ? 'required' : 'nullable', 'string', 'max:40'],
+            'size' => [$requiresVariants ? 'required' : 'nullable', 'string', 'max:40'],
+        ]);
+
+        $product = Product::findOrFail($request->id);
+        $quantity = max(1, (int) $request->input('quantity', 1));
+        $price = $product->sale_price ?: $product->regular_price;
+        $stockQuantity = (int) ($product->quntity ?? 0);
+
+        if ($product->stock_status === 'outofstock' || $stockQuantity < 1) {
+            return redirect()->back()->with('error', 'This product is out of stock.');
+        }
+
+        if ($quantity > $stockQuantity) {
+            return redirect()->back()->with('error', 'Only ' . $stockQuantity . ' item(s) are available.');
+        }
+
+        Cart::instance('cart')
+            ->add($product->id, $product->name, $quantity, $price, $this->cartItemOptionsFromRequest($request))
+            ->associate(Product::class);
+
+        return redirect()->back()->with('success', 'Product added to cart.');
     }
 
     public function increase_cart_quantity($rowId)
@@ -203,6 +228,7 @@ class CartController extends Controller
             $orderitem->order_id = $order->id;
             $orderitem->price = $item->price;
             $orderitem->quantity = $item->qty;
+            $orderitem->options = $this->formatCartItemOptions($item->options);
             $orderitem->save();
         }
 
@@ -273,6 +299,23 @@ class CartController extends Controller
             return view('order-confirmation', compact('order'));
         }
         return redirect()->route('cart.index');
+    }
+
+    private function cartItemOptionsFromRequest(Request $request): array
+    {
+        return collect($request->only(['color', 'size']))
+            ->map(fn ($value) => trim((string) $value))
+            ->filter(fn ($value) => $value !== '')
+            ->all();
+    }
+
+    private function formatCartItemOptions($options): ?string
+    {
+        $formattedOptions = collect($options ?? [])
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value, $key) => ucwords(str_replace('_', ' ', $key)) . ': ' . $value);
+
+        return $formattedOptions->isEmpty() ? null : $formattedOptions->implode(', ');
     }
 
 }

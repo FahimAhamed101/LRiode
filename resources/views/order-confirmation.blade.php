@@ -70,7 +70,10 @@
                 @foreach ($order->orderItem as $item)
                 <tr>
                   <td>
-                    {{$item->product->name}}× {{$item->quantity}}
+                    {{ $item->product->name }} x {{ $item->quantity }}
+                    @if ($item->options)
+                      <div class="small text-secondary">{{ $item->options }}</div>
+                    @endif
                   </td>
                   <td  class="text-right">
                     ${{$item->price}}

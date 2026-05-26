@@ -164,7 +164,17 @@
                                         @foreach (Cart::instance('cart') as $item)
                                             <tr>
                                                 <td>
-                                                    {{ $item->name }}×{{ $item->qty }}
+                                                    {{ $item->name }} x {{ $item->qty }}
+                                                    @php
+                                                        $itemOptions = collect($item->options)->filter(fn ($value) => filled($value));
+                                                    @endphp
+                                                    @if ($itemOptions->isNotEmpty())
+                                                        <div class="small text-secondary">
+                                                            @foreach ($itemOptions as $optionName => $optionValue)
+                                                                {{ \Illuminate\Support\Str::headline($optionName) }}: {{ $optionValue }}{{ ! $loop->last ? ', ' : '' }}
+                                                            @endforeach
+                                                        </div>
+                                                    @endif
                                                 </td>
                                                 <td align="right">
                                                     ${{ $item->subtotal() }}

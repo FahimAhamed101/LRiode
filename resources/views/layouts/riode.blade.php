@@ -35,12 +35,23 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/magnific-popup/magnific-popup.min.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/owl-carousel/owl.carousel.min.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/sticky-icon/stickyicon.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/style.min.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/demo1.min.css') }}">
     @stack('styles')
 </head>
 
 @php
-    $navCategories = collect($categories ?? [])->take(4);
+    $navCategories = collect($categories ?? []);
+
+    if ($navCategories->isEmpty()) {
+        try {
+            $navCategories = \App\Models\Category::orderBy('name')->take(4)->get();
+        } catch (\Throwable $exception) {
+            $navCategories = collect();
+        }
+    } else {
+        $navCategories = $navCategories->take(4);
+    }
 
     try {
         $cartCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart')->content()->count();

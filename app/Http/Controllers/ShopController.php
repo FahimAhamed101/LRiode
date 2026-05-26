@@ -87,13 +87,27 @@ class ShopController extends Controller
 
     public function product_details($product_slug)
     {
-        $product = Product::where('slug', $product_slug)->first();
-        $rproducts = Product::where('slug', '<>', $product_slug)->get()->take(8);
-        // تحسين الكود لعرض المنتجات عشوائيًا بدلاً من ترتيبها حسب قاعدة البيانات
-        /*   $rproducts = Product::where('slug', '<>', $product_slug)
-              ->inRandomOrder()
-              ->limit(8)
-              ->get(); */
+        $product = Product::with(['category', 'brand'])->where('slug', $product_slug)->firstOrFail();
+        $rproducts = Product::with('category')
+            ->where('slug', '<>', $product_slug)
+            ->when($product->category_id, function ($query) use ($product) {
+                $query->where('category_id', $product->category_id);
+            })
+            ->latest()
+            ->limit(8)
+            ->get();
+
+        if ($rproducts->count() < 4) {
+            $fallbackProducts = Product::with('category')
+                ->where('slug', '<>', $product_slug)
+                ->whereNotIn('id', $rproducts->pluck('id'))
+                ->latest()
+                ->limit(8 - $rproducts->count())
+                ->get();
+
+            $rproducts = $rproducts->concat($fallbackProducts);
+        }
+
         return view('details', compact('product', 'rproducts'));
     }
 

@@ -9,7 +9,7 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     {{--     <title>{{ config('app.name', '') }}</title>
- --}} <title>Surfside Media</title>
+ --}} <title>@yield('title', 'Riode Store')</title>
 
     <meta http-equiv="content-type" content="text/html; charset=utf-8" />
     <meta name="author" content="surfside media" />
@@ -22,21 +22,19 @@
     <link rel="stylesheet" href="{{ asset('assets/css/plugins/swiper.min.css') }}">
     <link rel="stylesheet" href="{{ asset('assets/css/custom.css') }}">
 
-
-
-    <link'
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/fontawesome-free/css/all.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/animate/animate.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/magnific-popup/magnific-popup.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/owl-carousel/owl.carousel.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/style.min.css') }}">
+    <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/demo1.min.css') }}">
+    <link
         href="https://fonts.googleapis.com/css2?family=Jost:ital,wght@0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&amp;display=swap"
         rel="stylesheet">
-        <link href="https://fonts.googleapis.com/css2?family=Allura&amp;display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="{{ asset('assets/css/plugins/swiper.min.css') }}" type="text/css" />
-        <link rel="stylesheet" href="{{ asset('assets/css/style.css" type="text/css') }}" />
-        <link rel="stylesheet" type="text/css" href="{{ asset('css/sweetalert.min.css') }}">
-        <link rel="stylesheet" href="{{ asset('assets/css/custom.css" type="text/css') }}" />
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-            integrity="sha512-SfTiTlX6kk+qitfevl/7LibUOeJWlt9rbyDn92a1DqWOw9vWG2MFoays0sgObmWazO5BQPiFucnnEAjpAB+/Sw=="
-            crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link href="https://fonts.googleapis.com/css2?family=Allura&amp;display=swap" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="{{ asset('css/sweetalert.min.css') }}">
 
-        @stack('styles')
+    @stack('styles')
 
 </head>
 
@@ -322,7 +320,7 @@
             /* تحسين التصميم */
         }
     </style>
-    <div class="header-mobile header_sticky">
+    <div class="header-mobile header_sticky" style="display: none;">
         <div class="container d-flex align-items-center h-100">
             <a class="mobile-nav-activator d-block position-relative" href="#">
                 <svg class="nav-icon" width="25" height="18" viewBox="0 0 25 18"
@@ -450,7 +448,207 @@
     </div>
 
 
-    <header id="header" class="header header-fullwidth header-transparent-bg">
+    @php
+        $navCategories = collect($categories ?? []);
+
+        if ($navCategories->isEmpty()) {
+            try {
+                $navCategories = \App\Models\Category::orderBy('name')->take(4)->get();
+            } catch (\Throwable $exception) {
+                $navCategories = collect();
+            }
+        } else {
+            $navCategories = $navCategories->take(4);
+        }
+
+        try {
+            $cartCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart')->content()->count();
+            $wishlistCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('wishlist')->content()->count();
+            $cartSubtotal = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart')->subtotal();
+        } catch (\Throwable $exception) {
+            $cartCount = 0;
+            $wishlistCount = 0;
+            $cartSubtotal = '0.00';
+        }
+    @endphp
+
+    <header class="header riode-site-header">
+        <div class="header-top">
+            <div class="container">
+                <div class="header-left">
+                    <p class="welcome-msg">Welcome to Riode fashion store.</p>
+                </div>
+                <div class="header-right">
+                    <a href="{{ route('home.contact') }}" class="contact d-lg-show"><i class="d-icon-map"></i>Contact</a>
+                    <a href="{{ route('home.about') }}" class="help d-lg-show"><i class="d-icon-info"></i>About</a>
+                    @guest
+                        <a href="{{ route('login') }}" class="login-toggle d-md-show"><i class="d-icon-user"></i>Sign in</a>
+                        <span class="delimiter">/</span>
+                        <a href="{{ route('register') }}" class="register-toggle d-md-show ml-0">Register</a>
+                    @else
+                        <a href="{{ Auth::user()->utype === 'ADM' ? route('admin.index') : route('user.index') }}" class="login-toggle d-md-show">
+                            <i class="d-icon-user"></i>{{ Auth::user()->name }}
+                        </a>
+                    @endguest
+                </div>
+            </div>
+        </div>
+
+        <div class="header-middle sticky-header fix-top sticky-content">
+            <div class="container">
+                <div class="header-left">
+                    <a href="#" class="mobile-menu-toggle">
+                        <i class="d-icon-bars2"></i>
+                    </a>
+                    <a href="{{ route('home.index') }}" class="logo">
+                        <img src="{{ asset('riode/images/logo.png') }}" alt="Riode logo" width="153" height="44">
+                    </a>
+
+                    <div class="header-search hs-simple">
+                        <form action="{{ route('shop.index') }}" class="input-wrapper">
+                            <input type="text" class="form-control" name="query" autocomplete="off" placeholder="Search..." required>
+                            <button class="btn btn-search" type="submit" title="Search">
+                                <i class="d-icon-search"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <a href="tel:+1800123456" class="icon-box icon-box-side">
+                        <div class="icon-box-icon mr-0 mr-lg-2">
+                            <i class="d-icon-phone"></i>
+                        </div>
+                        <div class="icon-box-content d-lg-show">
+                            <h4 class="icon-box-title">Call Us Now:</h4>
+                            <p>0(800) 123-456</p>
+                        </div>
+                    </a>
+                    <span class="divider"></span>
+                    <a href="{{ route('wishlist.index') }}" class="wishlist-toggle">
+                        <i class="d-icon-heart"></i>
+                        @if ($wishlistCount > 0)
+                            <span class="cart-count">{{ $wishlistCount }}</span>
+                        @endif
+                    </a>
+                    <span class="divider"></span>
+                    <div class="dropdown cart-dropdown type2 off-canvas mr-0 mr-lg-2">
+                        <a href="{{ route('cart.index') }}" class="cart-toggle label-block link">
+                            <div class="cart-label d-lg-show">
+                                <span class="cart-name">Shopping Cart:</span>
+                                <span class="cart-price">${{ $cartSubtotal }}</span>
+                            </div>
+                            <i class="d-icon-bag"><span class="cart-count">{{ $cartCount }}</span></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="header-bottom d-lg-show">
+            <div class="container">
+                <div class="header-left">
+                    <nav class="main-nav">
+                        <ul class="menu">
+                            <li class="{{ request()->routeIs('home.index') ? 'active' : '' }}">
+                                <a href="{{ route('home.index') }}">Home</a>
+                            </li>
+                            <li class="{{ request()->routeIs('shop.*') ? 'active' : '' }}">
+                                <a href="{{ route('shop.index') }}">Categories</a>
+                                <div class="megamenu">
+                                    <div class="row">
+                                        <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+                                            <h4 class="menu-title">Shop Categories</h4>
+                                            <ul>
+                                                @forelse ($navCategories as $category)
+                                                    <li><a href="{{ route('shop.index', ['categories' => $category->id]) }}">{{ $category->name }}</a></li>
+                                                @empty
+                                                    <li><a href="{{ route('shop.index') }}">All Products</a></li>
+                                                @endforelse
+                                            </ul>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+                                            <h4 class="menu-title">Store Links</h4>
+                                            <ul>
+                                                <li><a href="{{ route('shop.index') }}">Shop All</a></li>
+                                                <li><a href="{{ route('wishlist.index') }}">Wishlist</a></li>
+                                                <li><a href="{{ route('cart.index') }}">Cart</a></li>
+                                                <li><a href="{{ route('cart.checkout') }}">Checkout</a></li>
+                                            </ul>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-md-4 col-lg-3">
+                                            <h4 class="menu-title">Customer</h4>
+                                            <ul>
+                                                <li><a href="{{ route('home.about') }}">About Us</a></li>
+                                                <li><a href="{{ route('home.contact') }}">Contact Us</a></li>
+                                                @auth
+                                                    <li><a href="{{ route('user.index') }}">My Account</a></li>
+                                                    <li><a href="{{ route('user.orders') }}">Orders</a></li>
+                                                @else
+                                                    <li><a href="{{ route('login') }}">Login</a></li>
+                                                    <li><a href="{{ route('register') }}">Register</a></li>
+                                                @endauth
+                                            </ul>
+                                        </div>
+                                        <div class="col-6 col-sm-4 col-md-4 col-lg-3 menu-banner menu-banner1 banner banner-fixed">
+                                            <figure>
+                                                <img src="{{ asset('riode/images/menu/banner-1.jpg') }}" alt="Menu banner" width="221" height="330">
+                                            </figure>
+                                            <div class="banner-content y-50">
+                                                <h4 class="banner-subtitle font-weight-bold text-primary ls-m">Sale.</h4>
+                                                <h3 class="banner-title font-weight-bold"><span class="text-uppercase">Up to</span>70% Off</h3>
+                                                <a href="{{ route('shop.index') }}" class="btn btn-link btn-underline">shop now<i class="d-icon-arrow-right"></i></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                            <li><a href="{{ route('shop.index') }}">Products</a></li>
+                            <li><a href="{{ route('home.about') }}">About Us</a></li>
+                            <li><a href="{{ route('home.contact') }}">Contact</a></li>
+                        </ul>
+                    </nav>
+                </div>
+                <div class="header-right">
+                    <a href="{{ route('shop.index') }}"><i class="d-icon-card"></i>Special Offers</a>
+                    <a href="{{ route('shop.index') }}" class="ml-6">Shop Riode</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="mobile-menu-wrapper">
+        <div class="mobile-menu-overlay"></div>
+        <a class="mobile-menu-close" href="#"><i class="d-icon-times"></i></a>
+        <div class="mobile-menu-container scrollable">
+            <form action="{{ route('shop.index') }}" class="input-wrapper">
+                <input type="text" class="form-control" name="query" autocomplete="off" placeholder="Search your keyword..." required>
+                <button class="btn btn-search" type="submit" title="Search">
+                    <i class="d-icon-search"></i>
+                </button>
+            </form>
+            <ul class="mobile-menu mmenu-anim">
+                <li><a href="{{ route('home.index') }}">Home</a></li>
+                <li>
+                    <a href="{{ route('shop.index') }}">Categories</a>
+                    @if ($navCategories->isNotEmpty())
+                        <ul>
+                            @foreach ($navCategories as $category)
+                                <li><a href="{{ route('shop.index', ['categories' => $category->id]) }}">{{ $category->name }}</a></li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </li>
+                <li><a href="{{ route('shop.index') }}">Products</a></li>
+                <li><a href="{{ route('cart.index') }}">Cart</a></li>
+                <li><a href="{{ route('wishlist.index') }}">Wishlist</a></li>
+                <li><a href="{{ route('home.about') }}">About</a></li>
+                <li><a href="{{ route('home.contact') }}">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+
+    <header id="header" class="header header-fullwidth header-transparent-bg" style="display: none;">
         <div class="container">
             <div class="header-desk header-desk_type_1">
                 <div class="logo">
@@ -720,7 +918,7 @@
             </div>
 
             <div class="col-4">
-                <a href="{{ route('home.index') }}"
+                <a href="{{ route('shop.index') }}"
                     class="footer-mobile__link d-flex flex-column align-items-center">
                     <svg class="d-block" width="18" height="18" viewBox="0 0 18 18" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -731,14 +929,14 @@
             </div>
 
             <div class="col-4">
-                <a href="{{ route('home.index') }}"
+                <a href="{{ route('wishlist.index') }}"
                     class="footer-mobile__link d-flex flex-column align-items-center">
                     <div class="position-relative">
                         <svg class="d-block" width="18" height="18" viewBox="0 0 20 20" fill="none"
                             xmlns="http://www.w3.org/2000/svg">
                             <use href="#icon_heart" />
                         </svg>
-                        <span class="wishlist-amount d-block position-absolute js-wishlist-count">3</span>
+                        <span class="wishlist-amount d-block position-absolute js-wishlist-count">{{ $wishlistCount }}</span>
                     </div>
                     <span>Wishlist</span>
                 </a>
@@ -750,6 +948,12 @@
     <div class="page-overlay"></div>
 
     <script src="{{ asset('assets/js/plugins/jquery.min.js') }}"></script>
+    <script src="{{ asset('riode/vendor/parallax/parallax.min.js') }}"></script>
+    <script src="{{ asset('riode/vendor/imagesloaded/imagesloaded.pkgd.min.js') }}"></script>
+    <script src="{{ asset('riode/vendor/elevatezoom/jquery.elevatezoom.min.js') }}"></script>
+    <script src="{{ asset('riode/vendor/magnific-popup/jquery.magnific-popup.min.js') }}"></script>
+    <script src="{{ asset('riode/vendor/owl-carousel/owl.carousel.min.js') }}"></script>
+    <script src="{{ asset('riode/js/main.min.js') }}"></script>
     <script src="{{ asset('assets/js/plugins/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('assets/js/plugins/bootstrap-slider.min.js') }}"></script>
     <script src="{{ asset('assets/js/plugins/swiper.min.js') }}"></script>

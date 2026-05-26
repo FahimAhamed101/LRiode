@@ -52,7 +52,6 @@
                                     <tr>
                                         <td>
                                             <div class="shopping-cart__product-item">
-                                                {{ Cart::instance('cart')->__get('model') }}
                                                 <img loading="lazy"
                                                     src="{{ asset('uploads/products/thumbnails') }}/{{ $item->model->image }}"
                                                     width="120" height="120" alt="" />
@@ -65,10 +64,16 @@
                                         <td>
                                             <div class="shopping-cart__product-item__detail">
                                                 <h4>{{ $item->name }}</h4>
-                                                <ul class="shopping-cart__product-item__options">
-                                                    <li>Color: Yellow</li>
-                                                    <li>Size: L</li>
-                                                </ul>
+                                                @php
+                                                    $itemOptions = collect($item->options)->filter(fn ($value) => filled($value));
+                                                @endphp
+                                                @if ($itemOptions->isNotEmpty())
+                                                    <ul class="shopping-cart__product-item__options">
+                                                        @foreach ($itemOptions as $optionName => $optionValue)
+                                                            <li>{{ \Illuminate\Support\Str::headline($optionName) }}: {{ $optionValue }}</li>
+                                                        @endforeach
+                                                    </ul>
+                                                @endif
                                             </div>
                                         </td>
                                         <td>
