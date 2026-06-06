@@ -33,11 +33,13 @@ Route::delete('/wishlist/clear', [WishlistController::class, 'empty_wishlist'])-
 Route::post('/wishlist/move-to-cart/{rowId}', [WishlistController::class, 'move_to_cart'])->name('wishlist.to.cart');
 Route::get('/wishlist/count', function () {
     return response()->json(['count' => Cart::instance('wishlist')->count()]);
-});
+})->name('wishlist.count');
 //CHECKOUT
 Route::get('/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 Route::post('/place_an_order', [CartController::class, 'place_on_order'])->name('cart.place.on.order');
 Route::get('/order_confirmation', [CartController::class, 'order_confirmation'])->name('cart.order.confirmation');
+Route::get('/checkout/stripe/success', [CartController::class, 'stripe_success'])->name('cart.stripe.success');
+Route::get('/checkout/stripe/cancel', [CartController::class, 'stripe_cancel'])->name('cart.stripe.cancel');
 Route::get('/test-coupon', function() {
     return session()->all();
 });

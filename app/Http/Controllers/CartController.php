@@ -25,6 +25,8 @@ use Illuminate\Contracts\Support\Jsonable;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 
 class CartController extends Controller
@@ -56,8 +58,15 @@ class CartController extends Controller
             return redirect()->back()->with('error', 'This product is out of stock.');
         }
 
-        if ($quantity > $stockQuantity) {
-            return redirect()->back()->with('error', 'Only ' . $stockQuantity . ' item(s) are available.');
+        $cartQuantity = $this->cartQuantityForProduct($product);
+        $availableQuantity = $stockQuantity - $cartQuantity;
+
+        if ($availableQuantity < 1) {
+            return redirect()->back()->with('error', 'This product is already at the available stock limit in your cart.');
+        }
+
+        if ($quantity > $availableQuantity) {
+            return redirect()->back()->with('error', 'Only ' . $availableQuantity . ' more item(s) are available.');
         }
 
         Cart::instance('cart')
@@ -69,8 +78,18 @@ class CartController extends Controller
 
     public function increase_cart_quantity($rowId)
     {
-        $product = Cart::instance('cart')->get($rowId);
-        $qty = $product->qty + 1;
+        $cartItem = Cart::instance('cart')->get($rowId);
+        $product = Product::find($cartItem->id);
+
+        if ($product) {
+            $stockQuantity = (int) ($product->quntity ?? 0);
+
+            if ($product->stock_status === 'outofstock' || $this->cartQuantityForProduct($product) >= $stockQuantity) {
+                return redirect()->back()->with('error', 'Only ' . $stockQuantity . ' item(s) are available.');
+            }
+        }
+
+        $qty = $cartItem->qty + 1;
         Cart::instance('cart')->update($rowId, $qty);
         return redirect()->back();
     }
@@ -164,12 +183,20 @@ class CartController extends Controller
         if (!Auth::check()) {
             return redirect()->route('login')->with('error', 'Please log in first');
         }
+
+        if (Cart::instance('cart')->content()->count() < 1) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+        }
+
+        $this->setAmountforCheckout();
         $address = Address::where('user_id', Auth::user()->id)->where('isdefault', 1)->first();
         return view('checkout', compact('address'));
     }
 
     public function place_on_order(Request $request)
     {
+        return $this->processCheckoutOrder($request);
+
         $user_id = optional(Auth::user())->id;
         // dd($request->all()); // تأكد من وصول البيانات قبل أي عمليات أخرى
 
@@ -263,9 +290,70 @@ class CartController extends Controller
         // return view('order-confirmation',compact('order'));
         return redirect()->route('cart.order.confirmation');
     }
+
+    public function stripe_success(Request $request)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please log in first');
+        }
+
+        $sessionId = (string) $request->query('session_id');
+
+        if ($sessionId === '') {
+            return redirect()->route('cart.checkout')->with('error', 'Stripe did not return a checkout session.');
+        }
+
+        $snapshot = Session::get('stripe_checkout.' . $sessionId);
+
+        if (!$snapshot) {
+            if (Session::has('order_id')) {
+                return redirect()->route('cart.order.confirmation');
+            }
+
+            return redirect()->route('cart.index')->with('error', 'This Stripe checkout session has expired.');
+        }
+
+        if ((string) ($snapshot['user_id'] ?? '') !== (string) Auth::id()) {
+            return redirect()->route('cart.index')->with('error', 'This checkout session does not belong to your account.');
+        }
+
+        try {
+            $stripeSession = $this->retrieveStripeCheckoutSession($sessionId);
+        } catch (\Throwable $exception) {
+            Log::error('Stripe checkout verification failed.', [
+                'message' => $exception->getMessage(),
+                'session_id' => $sessionId,
+                'user_id' => Auth::id(),
+            ]);
+
+            return redirect()->route('cart.checkout')->with('error', 'Stripe payment verification failed. Please try again.');
+        }
+
+        $expectedAmount = $this->stripeAmount($snapshot['totals']['total']);
+        $paymentIsPaid = ($stripeSession['payment_status'] ?? null) === 'paid';
+        $referenceMatches = (string) ($stripeSession['metadata']['reference'] ?? '') === (string) ($snapshot['reference'] ?? '');
+        $amountMatches = (int) ($stripeSession['amount_total'] ?? 0) === $expectedAmount;
+
+        if (!$paymentIsPaid || !$referenceMatches || !$amountMatches) {
+            return redirect()->route('cart.checkout')->with('error', 'Stripe payment was not completed.');
+        }
+
+        $order = $this->createOrderFromSnapshot($snapshot);
+        $this->createTransaction($order, 'card', 'paid');
+        $this->completeOrderCheckout($order);
+        Session::forget('stripe_checkout.' . $sessionId);
+
+        return redirect()->route('cart.order.confirmation')->with('success', 'Payment received and order placed.');
+    }
+
+    public function stripe_cancel()
+    {
+        return redirect()->route('cart.checkout')->with('error', 'Stripe checkout was cancelled. Your cart is still saved.');
+    }
+
     public function setAmountforCheckout()
     {
-        if (!Cart::instance('cart')->content()->count() > 0) {
+        if (Cart::instance('cart')->content()->count() < 1) {
             Session::forget('checkout');
             return;
         }
@@ -295,10 +383,264 @@ class CartController extends Controller
     public function order_confirmation()
     {
         if (Session::has('order_id')) {
-            $order = Order::find(Session::get('order_id'));
+            $order = Order::with(['orderItem.product', 'transaction'])->find(Session::get('order_id'));
+
+            if (!$order) {
+                return redirect()->route('cart.index');
+            }
+
             return view('order-confirmation', compact('order'));
         }
         return redirect()->route('cart.index');
+    }
+
+    private function processCheckoutOrder(Request $request)
+    {
+        if (!Auth::check()) {
+            return redirect()->route('login')->with('error', 'Please log in first');
+        }
+
+        if (Cart::instance('cart')->content()->count() < 1) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+        }
+
+        $request->validate([
+            'mode' => ['required', 'in:card,cod'],
+        ]);
+
+        $address = $this->checkoutAddress($request);
+        $this->setAmountforCheckout();
+
+        if (!Session::has('checkout')) {
+            return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
+        }
+
+        $snapshot = $this->checkoutSnapshot($address, $request->input('mode'));
+
+        if ($request->input('mode') === 'card') {
+            try {
+                $stripeSession = $this->createStripeCheckoutSession($snapshot);
+                Session::put('stripe_checkout.' . $stripeSession['id'], $snapshot);
+
+                return redirect()->away($stripeSession['url']);
+            } catch (\Throwable $exception) {
+                Log::error('Stripe checkout session failed.', [
+                    'message' => $exception->getMessage(),
+                    'user_id' => Auth::id(),
+                ]);
+
+                return redirect()
+                    ->route('cart.checkout')
+                    ->with('error', 'Stripe checkout could not be started. Please check your Stripe keys and try again.');
+            }
+        }
+
+        $order = $this->createOrderFromSnapshot($snapshot);
+        $this->createTransaction($order, 'cod', 'pending');
+        $this->completeOrderCheckout($order);
+
+        return redirect()->route('cart.order.confirmation')->with('success', 'Order placed successfully.');
+    }
+
+    private function checkoutAddress(Request $request): Address
+    {
+        $address = Address::where('user_id', Auth::id())->where('isdefault', true)->first();
+
+        if ($address) {
+            return $address;
+        }
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:100'],
+            'phone' => ['required', 'string', 'max:25'],
+            'address' => ['required', 'string', 'max:255'],
+            'zip' => ['required', 'string', 'max:20'],
+            'city' => ['required', 'string', 'max:80'],
+            'landmark' => ['nullable', 'string', 'max:255'],
+            'locality' => ['required', 'string', 'max:255'],
+            'state' => ['required', 'string', 'max:80'],
+            'country' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        $address = new Address();
+        $address->name = $validated['name'];
+        $address->phone = $validated['phone'];
+        $address->address = $validated['address'];
+        $address->zip = $validated['zip'];
+        $address->city = $validated['city'];
+        $address->landmark = $validated['landmark'] ?? '';
+        $address->locality = $validated['locality'];
+        $address->state = $validated['state'];
+        $address->country = $validated['country'] ?? 'United States';
+        $address->user_id = Auth::id();
+        $address->isdefault = true;
+        $address->save();
+
+        return $address;
+    }
+
+    private function checkoutSnapshot(Address $address, string $mode): array
+    {
+        $checkout = Session::get('checkout');
+
+        return [
+            'reference' => uniqid('checkout-' . Auth::id() . '-', true),
+            'user_id' => Auth::id(),
+            'mode' => $mode,
+            'totals' => [
+                'subtotal' => (float) $checkout['subtotal'],
+                'discount' => (float) $checkout['discount'],
+                'tax' => (float) $checkout['tax'],
+                'total' => (float) $checkout['total'],
+            ],
+            'address' => [
+                'name' => $address->name,
+                'phone' => $address->phone,
+                'locality' => $address->locality,
+                'address' => $address->address,
+                'city' => $address->city,
+                'state' => $address->state,
+                'country' => $address->country,
+                'landmark' => $address->landmark,
+                'zip' => $address->zip,
+            ],
+            'items' => Cart::instance('cart')->content()
+                ->map(fn ($item) => [
+                    'product_id' => $item->id,
+                    'name' => $item->name,
+                    'price' => (float) $item->price,
+                    'quantity' => (int) $item->qty,
+                    'options' => $this->formatCartItemOptions($item->options),
+                ])
+                ->values()
+                ->all(),
+        ];
+    }
+
+    private function createStripeCheckoutSession(array $snapshot): array
+    {
+        $secret = config('services.stripe.secret');
+
+        if (!$secret) {
+            throw new \RuntimeException('Stripe secret key is not configured.');
+        }
+
+        $amount = $this->stripeAmount($snapshot['totals']['total']);
+
+        if ($amount < 1) {
+            throw new \RuntimeException('Stripe checkout total must be greater than zero.');
+        }
+
+        $response = Http::asForm()
+            ->withToken($secret)
+            ->post('https://api.stripe.com/v1/checkout/sessions', [
+                'mode' => 'payment',
+                'client_reference_id' => $snapshot['reference'],
+                'customer_email' => optional(Auth::user())->email,
+                'success_url' => route('cart.stripe.success') . '?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => route('cart.stripe.cancel'),
+                'metadata[reference]' => $snapshot['reference'],
+                'metadata[user_id]' => (string) $snapshot['user_id'],
+                'line_items[0][quantity]' => 1,
+                'line_items[0][price_data][currency]' => strtolower(config('services.stripe.currency', 'usd')),
+                'line_items[0][price_data][unit_amount]' => $amount,
+                'line_items[0][price_data][product_data][name]' => 'Riode cart order',
+                'line_items[0][price_data][product_data][description]' => count($snapshot['items']) . ' item(s), including tax and discounts',
+            ]);
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Stripe returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        $payload = $response->json();
+
+        if (empty($payload['id']) || empty($payload['url'])) {
+            throw new \RuntimeException('Stripe did not return a checkout URL.');
+        }
+
+        return [
+            'id' => $payload['id'],
+            'url' => $payload['url'],
+        ];
+    }
+
+    private function retrieveStripeCheckoutSession(string $sessionId): array
+    {
+        $secret = config('services.stripe.secret');
+
+        if (!$secret) {
+            throw new \RuntimeException('Stripe secret key is not configured.');
+        }
+
+        $response = Http::withToken($secret)
+            ->get('https://api.stripe.com/v1/checkout/sessions/' . rawurlencode($sessionId));
+
+        if (!$response->successful()) {
+            throw new \RuntimeException('Stripe returned ' . $response->status() . ': ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    private function stripeAmount(float $total): int
+    {
+        return (int) round($total * 100);
+    }
+
+    private function createOrderFromSnapshot(array $snapshot): Order
+    {
+        $address = $snapshot['address'];
+        $totals = $snapshot['totals'];
+
+        $order = new Order();
+        $order->user_id = $snapshot['user_id'];
+        $order->subtotal = $totals['subtotal'];
+        $order->discount = $totals['discount'];
+        $order->tax = $totals['tax'];
+        $order->total = $totals['total'];
+        $order->name = $address['name'];
+        $order->locality = $address['locality'];
+        $order->address = $address['address'];
+        $order->city = $address['city'];
+        $order->state = $address['state'];
+        $order->country = $address['country'];
+        $order->landmark = $address['landmark'];
+        $order->zip = $address['zip'];
+        $order->phone = $address['phone'];
+        $order->save();
+
+        foreach ($snapshot['items'] as $item) {
+            $orderitem = new OrderItem();
+            $orderitem->product_id = $item['product_id'];
+            $orderitem->order_id = $order->id;
+            $orderitem->price = $item['price'];
+            $orderitem->quantity = $item['quantity'];
+            $orderitem->options = $item['options'];
+            $orderitem->save();
+        }
+
+        return $order->load(['orderItem.product', 'transaction']);
+    }
+
+    private function createTransaction(Order $order, string $mode, string $status): Transaction
+    {
+        $transaction = new Transaction();
+        $transaction->user_id = $order->user_id;
+        $transaction->order_id = $order->id;
+        $transaction->mode = $mode;
+        $transaction->status = $status;
+        $transaction->save();
+
+        return $transaction;
+    }
+
+    private function completeOrderCheckout(Order $order): void
+    {
+        Cart::instance('cart')->destroy();
+        Session::forget('checkout');
+        Session::forget('coupon');
+        Session::forget('discounts');
+        Session::put('order_id', $order->id);
     }
 
     private function cartItemOptionsFromRequest(Request $request): array
@@ -307,6 +649,13 @@ class CartController extends Controller
             ->map(fn ($value) => trim((string) $value))
             ->filter(fn ($value) => $value !== '')
             ->all();
+    }
+
+    private function cartQuantityForProduct(Product $product): int
+    {
+        return (int) Cart::instance('cart')->content()
+            ->filter(fn ($item) => (string) $item->id === (string) $product->id)
+            ->sum('qty');
     }
 
     private function formatCartItemOptions($options): ?string

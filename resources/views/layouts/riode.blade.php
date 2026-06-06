@@ -37,6 +37,28 @@
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/vendor/sticky-icon/stickyicon.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/style.min.css') }}">
     <link rel="stylesheet" type="text/css" href="{{ asset('riode/css/demo1.min.css') }}">
+    <style>
+        html,
+        body {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        .off-canvas .dropdown-box {
+            display: none;
+            opacity: 1;
+            pointer-events: auto;
+            right: 0;
+            transform: none;
+            visibility: visible;
+        }
+
+        .off-canvas.opened .dropdown-box {
+            display: block;
+            right: 0;
+            transform: none;
+        }
+    </style>
     @stack('styles')
 </head>
 
@@ -54,17 +76,20 @@
     }
 
     try {
-        $cartCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart')->content()->count();
-        $wishlistCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('wishlist')->content()->count();
-        $cartSubtotal = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart')->subtotal();
+        $cart = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('cart');
+        $cartItems = $cart->content();
+        $cartCount = $cart->count();
+        $cartSubtotal = $cart->subtotal();
+        $wishlistCount = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('wishlist')->count();
     } catch (\Throwable $exception) {
+        $cartItems = collect();
         $cartCount = 0;
         $wishlistCount = 0;
         $cartSubtotal = '0.00';
     }
 @endphp
 
-<body class="home">
+<body class="@yield('body_class', 'home')">
     <div class="page-wrapper">
         <h1 class="d-none">Riode Ecommerce Store</h1>
 
@@ -78,11 +103,11 @@
                         <a href="{{ route('home.contact') }}" class="contact d-lg-show"><i class="d-icon-map"></i>Contact</a>
                         <a href="{{ route('home.about') }}" class="help d-lg-show"><i class="d-icon-info"></i>About</a>
                         @guest
-                            <a href="{{ route('login') }}" class="login-toggle d-md-show"><i class="d-icon-user"></i>Sign in</a>
+                            <a href="{{ route('login') }}" class="auth-link d-md-show"><i class="d-icon-user"></i>Sign in</a>
                             <span class="delimiter">/</span>
-                            <a href="{{ route('register') }}" class="register-toggle d-md-show ml-0">Register</a>
+                            <a href="{{ route('register') }}" class="auth-link d-md-show ml-0">Register</a>
                         @else
-                            <a href="{{ Auth::user()->utype === 'ADM' ? route('admin.index') : route('user.index') }}" class="login-toggle d-md-show">
+                            <a href="{{ Auth::user()->utype === 'ADM' ? route('admin.index') : route('user.index') }}" class="auth-link d-md-show">
                                 <i class="d-icon-user"></i>{{ Auth::user()->name }}
                             </a>
                         @endguest
@@ -121,22 +146,18 @@
                             </div>
                         </a>
                         <span class="divider"></span>
-                        <a href="{{ route('wishlist.index') }}" class="wishlist-toggle">
+                        <a href="{{ route('wishlist.index') }}" class="wishlist-toggle wishlist-link">
                             <i class="d-icon-heart"></i>
                             @if ($wishlistCount > 0)
-                                <span class="cart-count">{{ $wishlistCount }}</span>
+                                <span class="cart-count js-wishlist-count">{{ $wishlistCount }}</span>
                             @endif
                         </a>
                         <span class="divider"></span>
-                        <div class="dropdown cart-dropdown type2 off-canvas mr-0 mr-lg-2">
-                            <a href="{{ route('cart.index') }}" class="cart-toggle label-block link">
-                                <div class="cart-label d-lg-show">
-                                    <span class="cart-name">Shopping Cart:</span>
-                                    <span class="cart-price">${{ $cartSubtotal }}</span>
-                                </div>
-                                <i class="d-icon-bag"><span class="cart-count">{{ $cartCount }}</span></i>
-                            </a>
-                        </div>
+                        @include('partials.riode-mini-cart', [
+                            'cartItems' => $cartItems,
+                            'cartCount' => $cartCount,
+                            'cartSubtotal' => $cartSubtotal,
+                        ])
                     </div>
                 </div>
             </div>
@@ -369,6 +390,13 @@
     <script src="{{ asset('riode/vendor/magnific-popup/jquery.magnific-popup.min.js') }}"></script>
     <script src="{{ asset('riode/vendor/owl-carousel/owl.carousel.min.js') }}"></script>
     <script src="{{ asset('riode/js/main.min.js') }}"></script>
+    <script>
+        document.querySelectorAll('.js-backend-form [type="submit"]').forEach(function(button) {
+            button.addEventListener('click', function(event) {
+                event.stopPropagation();
+            }, true);
+        });
+    </script>
     @stack('scripts')
 </body>
 

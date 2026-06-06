@@ -1,280 +1,341 @@
-@extends('layouts.app')
+@extends('layouts.riode')
+
+@section('title', 'Checkout - Riode Store')
+@section('body_class', 'checkout')
+
+@push('styles')
+    <style>
+        .checkout-page .checkout-panel,
+        .checkout-page .summary {
+            border: 1px solid #e6e6e6;
+            border-radius: 4px;
+            background: #fff;
+        }
+
+        .checkout-page .checkout-panel {
+            padding: 2.8rem;
+            margin-bottom: 2rem;
+        }
+
+        .checkout-page .checkout-panel-title {
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .checkout-page .saved-address {
+            display: grid;
+            gap: .8rem;
+            padding: 1.8rem;
+            border: 1px solid #e5e5e5;
+            background: #fafafa;
+            color: #555;
+        }
+
+        .checkout-page .saved-address strong {
+            color: #222;
+            font-size: 1.5rem;
+        }
+
+        .checkout-page .form-control {
+            min-height: 4.5rem;
+            border-color: #e1e1e1;
+        }
+
+        .checkout-page .form-group label {
+            display: block;
+            margin-bottom: .7rem;
+            color: #222;
+            font-weight: 600;
+        }
+
+        .checkout-page .payment-option {
+            display: flex;
+            align-items: flex-start;
+            gap: 1.2rem;
+            padding: 1.6rem;
+            border: 1px solid #e6e6e6;
+        }
+
+        .checkout-page .payment-option + .payment-option {
+            margin-top: 1rem;
+        }
+
+        .checkout-page .payment-option input {
+            margin-top: .4rem;
+        }
+
+        .checkout-page .payment-option strong {
+            display: block;
+            color: #222;
+        }
+
+        .checkout-page .payment-option span {
+            display: block;
+            margin-top: .3rem;
+            color: #777;
+            font-size: 1.3rem;
+            line-height: 1.5;
+        }
+
+        .checkout-page .order-table td {
+            padding: 1.2rem 0;
+            vertical-align: top;
+        }
+
+        .checkout-page .order-item-meta {
+            margin-top: .4rem;
+            color: #888;
+            font-size: 1.2rem;
+        }
+
+        .checkout-page .summary {
+            padding: 2.6rem;
+        }
+
+        .checkout-page .summary-title {
+            margin-bottom: 1.8rem;
+        }
+
+        .checkout-page .total td {
+            padding-top: 1.2rem;
+        }
+
+        .checkout-page .stripe-note {
+            margin: 1.4rem 0 0;
+            color: #777;
+            font-size: 1.25rem;
+            line-height: 1.5;
+        }
+
+        @media (max-width: 767px) {
+            .checkout-page .checkout-panel,
+            .checkout-page .summary {
+                padding: 2rem;
+            }
+        }
+    </style>
+@endpush
+
 @section('content')
-    </header>
-    <main class="pt-90">
-        <div class="mb-4 pb-4"></div>
-        <section class="shop-checkout container">
-            <h2 class="page-title">Shipping and Checkout</h2>
-            <div class="checkout-steps">
-                <a href="{{ route('cart.index') }}" class="checkout-steps__item active">
-                    <span class="checkout-steps__item-number">01</span>
-                    <span class="checkout-steps__item-title">
-                        <span>Shopping Bag</span>
-                        <em>Manage Your Items List</em>
-                    </span>
-                </a>
-                <a href="javascript:void(0)" class="checkout-steps__item active">
-                    <span class="checkout-steps__item-number">02</span>
-                    <span class="checkout-steps__item-title">
-                        <span>Shipping and Checkout</span>
-                        <em>Checkout Your Items List</em>
-                    </span>
-                </a>
-                <a href="javascript:void(0)" class="checkout-steps__item">
-                    <span class="checkout-steps__item-number">03</span>
-                    <span class="checkout-steps__item-title">
-                        <span>Confirmation</span>
-                        <em>Review And Submit Your Order</em>
-                    </span>
-                </a>
+    @php
+        $items = Cart::instance('cart')->content();
+        $money = fn ($value) => '$' . number_format((float) str_replace(',', '', (string) $value), 2);
+        $hasDiscount = Session::has('discounts');
+    @endphp
+
+    <main class="main checkout-page">
+        <nav class="breadcrumb-nav">
+            <div class="container">
+                <ul class="breadcrumb">
+                    <li><a href="{{ route('home.index') }}"><i class="d-icon-home"></i></a></li>
+                    <li><a href="{{ route('cart.index') }}">Cart</a></li>
+                    <li>Checkout</li>
+                </ul>
             </div>
-            <form name="checkout-form" action="{{route('cart.place.on.order')}}" method="POST">
-                @csrf
-                @method('POST')
-                <div class="checkout-form">
-                    <div class="billing-info__wrapper">
-                        <div class="row">
-                            <div class="col-6">
-                                <h4>SHIPPING DETAILS</h4>
-                            </div>
-                            <div class="col-6">
-                            </div>
-                        </div>
+        </nav>
 
-                        @if ($address)
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <div class="my-account__address-list">
-                                        <div class="my-account__address-list-item">
-                                            <div class="my-account__address-item__detail">
-                                                <p>{{ $address->name }}</p>
-                                                <p>{{ $address->address }}</p>
-                                                <p>{{ $address->landmark }}</p>
-                                                <p>{{ $address->city }},{{ $address->state }},{{ $address->country }}</p>
-                                                <p>{{ $address->zip }}</p>
-                                                <p>{{ $address->type }}</p>
-                                                <br>
-                                                <p>{{ $address->phone }}</p>
+        <div class="page-content pt-7 pb-10">
+            <div class="step-by pr-4 pl-4">
+                <h3 class="title title-simple title-step"><a href="{{ route('cart.index') }}">1. Shopping Cart</a></h3>
+                <h3 class="title title-simple title-step active"><a href="{{ route('cart.checkout') }}">2. Checkout</a></h3>
+                <h3 class="title title-simple title-step"><span>3. Order Complete</span></h3>
+            </div>
 
+            <div class="container mt-7">
+                @if (session('success'))
+                    <div class="alert alert-success">{{ session('success') }}</div>
+                @endif
+
+                @if (session('error'))
+                    <div class="alert alert-danger">{{ session('error') }}</div>
+                @endif
+
+                <form action="{{ route('cart.place.on.order') }}" method="POST" class="js-backend-form">
+                    @csrf
+                    <div class="row gutter-lg">
+                        <div class="col-lg-7">
+                            <section class="checkout-panel">
+                                <h2 class="checkout-panel-title">Shipping Details</h2>
+
+                                @if ($address)
+                                    <div class="saved-address">
+                                        <strong>{{ $address->name }}</strong>
+                                        <span>{{ $address->address }}</span>
+                                        @if ($address->locality)
+                                            <span>{{ $address->locality }}</span>
+                                        @endif
+                                        <span>{{ $address->city }}, {{ $address->state }} {{ $address->zip }}</span>
+                                        <span>{{ $address->country }}</span>
+                                        @if ($address->landmark)
+                                            <span>{{ $address->landmark }}</span>
+                                        @endif
+                                        <span>{{ $address->phone }}</span>
+                                    </div>
+                                @else
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="name">Full Name *</label>
+                                                <input type="text" id="name" name="name" class="form-control" value="{{ old('name') }}" required>
+                                                @error('name')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="phone">Phone Number *</label>
+                                                <input type="text" id="phone" name="phone" class="form-control" value="{{ old('phone') }}" required>
+                                                @error('phone')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="address">Street Address *</label>
+                                                <input type="text" id="address" name="address" class="form-control" value="{{ old('address') }}" required>
+                                                @error('address')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="locality">Apartment, Area or Locality *</label>
+                                                <input type="text" id="locality" name="locality" class="form-control" value="{{ old('locality') }}" required>
+                                                @error('locality')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="city">Town / City *</label>
+                                                <input type="text" id="city" name="city" class="form-control" value="{{ old('city') }}" required>
+                                                @error('city')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="state">State *</label>
+                                                <input type="text" id="state" name="state" class="form-control" value="{{ old('state') }}" required>
+                                                @error('state')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="form-group">
+                                                <label for="zip">ZIP / Postal Code *</label>
+                                                <input type="text" id="zip" name="zip" class="form-control" value="{{ old('zip') }}" required>
+                                                @error('zip')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="country">Country</label>
+                                                <input type="text" id="country" name="country" class="form-control" value="{{ old('country', 'United States') }}">
+                                                @error('country')<small class="text-danger">{{ $message }}</small>@enderror
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group">
+                                                <label for="landmark">Landmark</label>
+                                                <input type="text" id="landmark" name="landmark" class="form-control" value="{{ old('landmark') }}">
+                                                @error('landmark')<small class="text-danger">{{ $message }}</small>@enderror
                                             </div>
                                         </div>
                                     </div>
+                                @endif
+                            </section>
 
-                                </div>
-                            </div>
-                        @else
-                            <div class="row mt-5">
-                                <div class="col-md-6">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="name" required=""
-                                            value="{{ old('name') }}">
-                                        <label for="name">Full Name *</label>
-                                        @error('name')
-                                            <span class="alert alert-danger text-center">{{ $message }}</span>
-                                        @enderror
-                                    </div>
+                            <section class="checkout-panel">
+                                <h2 class="checkout-panel-title">Payment Method</h2>
+                                <label class="payment-option" for="mode-card">
+                                    <input type="radio" name="mode" id="mode-card" value="card" {{ old('mode', 'card') === 'card' ? 'checked' : '' }}>
+                                    <span>
+                                        <strong>Credit or Debit Card</strong>
+                                        <span>Pay securely through Stripe Checkout. You will be redirected to Stripe to complete payment.</span>
+                                    </span>
+                                </label>
+                                <label class="payment-option" for="mode-cod">
+                                    <input type="radio" name="mode" id="mode-cod" value="cod" {{ old('mode') === 'cod' ? 'checked' : '' }}>
+                                    <span>
+                                        <strong>Cash on Delivery</strong>
+                                        <span>Place the order now and pay when your package arrives.</span>
+                                    </span>
+                                </label>
+                                @error('mode')<small class="text-danger d-block mt-2">{{ $message }}</small>@enderror
+                            </section>
+                        </div>
 
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="phone" required=""
-                                            value="{{ old('phone') }}">
-                                        <label for="phone">Phone Number *</label>
-                                        @error('phone')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="zip" required=""
-                                            value="{{ old('zip') }}">
-                                        <label for="zip">Pincode *</label>
-                                        @error('zip')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-floating mt-3 mb-3">
-                                        <input type="text" class="form-control" name="state" required=""
-                                            value="{{ old('name') }}">
-                                        <label for="state">State *</label>
-                                        @error('state')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="city" required=""
-                                            value="{{ old('city') }}">
-                                        <label for="city">Town / City *</label>
-                                        @error('city')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="address" required=""
-                                            value="{{ old('address') }}">
-                                        <label for="address">House no, Building Name *</label>
-                                        @error('address')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-floating my-3">
-                                        
-                                        <input type="text" class="form-control" name="locality" required=""
-                                            value="{{ old('locality') }}">
-                                        <label for="locality">Road Name, Area, Colony *</label>
-                                        @error('locality')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                                <div class="col-md-12">
-                                    <div class="form-floating my-3">
-                                        <input type="text" class="form-control" name="landmark" required=""
-                                            value="{{ old('landmark') }}">
-                                        <label for="landmark">Landmark *</label>
-                                        @error('landmark')
-                                            <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                        @endif
-                    </div>
-                    <div class="checkout__totals-wrapper">
-                        <div class="sticky-content">
-                            <div class="checkout__totals">
-                                <h3>Your Order</h3>
-                                <table class="checkout-cart-items">
-                                    <thead>
-                                        <tr>
-                                            <th>PRODUCT</th>
-                                            <th align="right">SUBTOTAL</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach (Cart::instance('cart') as $item)
-                                            <tr>
-                                                <td>
-                                                    {{ $item->name }} x {{ $item->qty }}
-                                                    @php
-                                                        $itemOptions = collect($item->options)->filter(fn ($value) => filled($value));
-                                                    @endphp
-                                                    @if ($itemOptions->isNotEmpty())
-                                                        <div class="small text-secondary">
-                                                            @foreach ($itemOptions as $optionName => $optionValue)
-                                                                {{ \Illuminate\Support\Str::headline($optionName) }}: {{ $optionValue }}{{ ! $loop->last ? ', ' : '' }}
-                                                            @endforeach
-                                                        </div>
-                                                    @endif
-                                                </td>
-                                                <td align="right">
-                                                    ${{ $item->subtotal() }}
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                                @if (Session::has('discounts'))
-                                <table class="checkout-totals">
-                                  <tbody>
-                                    <tr>
-                                        <th>Subtotal</th>
-                                        <td class="text-right">${{ Cart::instance('cart')->subTotal() }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Discount {{ Session::get('coupon')['code'] }}</th>
-                                        <td class="text-right">${{ Session::get('discounts')['discount'] }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Subtotal After Discount</th>
-                                        <td class="text-right">${{ Session::get('discounts')['subtotal'] }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Shipping</th>
-                                        <td class="text-right">Free
-
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th>VAT</th>
-                                        <td class="text-right">${{ Session::get('discounts')['tax'] }}</td>
-                                    </tr>
-                                    <tr>
-                                        <th>Total</th>
-                                        <td class="text-right">${{ Session::get('discounts')['total'] }}</td>
-                                    </tr>
-                                </tbody>
-                              </table>
-                                @else
-                                    <table class="checkout-totals">
+                        <aside class="col-lg-5 sticky-sidebar-wrapper">
+                            <div class="sticky-sidebar" data-sticky-options="{'bottom': 20}">
+                                <div class="summary">
+                                    <h3 class="summary-title text-left">Your Order</h3>
+                                    <table class="order-table w-100">
                                         <tbody>
-                                            <tr>
-                                                <th>SUBTOTAL</th>
-                                                <td class="text-right">${{ Cart::instance('cart')->subtotal() }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>SHIPPING</th>
-                                                <td class="text-right">Free shipping</td>
-                                            </tr>
-                                            <tr>
-                                                <th>VAT</th>
-                                                <td class="text-right">${{ Cart::instance('cart')->tax() }}</td>
-                                            </tr>
-                                            <tr>
-                                                <th>TOTAL</th>
-                                                <td class="text-right">${{ Cart::instance('cart')->total() }}</td>
-                                            </tr>
+                                            @foreach ($items as $item)
+                                                @php
+                                                    $itemOptions = collect($item->options)->filter(fn ($value) => filled($value));
+                                                @endphp
+                                                <tr>
+                                                    <td>
+                                                        <strong>{{ $item->name }}</strong> x {{ $item->qty }}
+                                                        @if ($itemOptions->isNotEmpty())
+                                                            <div class="order-item-meta">
+                                                                @foreach ($itemOptions as $optionName => $optionValue)
+                                                                    {{ \Illuminate\Support\Str::headline($optionName) }}: {{ $optionValue }}{{ ! $loop->last ? ', ' : '' }}
+                                                                @endforeach
+                                                            </div>
+                                                        @endif
+                                                    </td>
+                                                    <td class="text-right">{{ $money($item->price * $item->qty) }}</td>
+                                                </tr>
+                                            @endforeach
                                         </tbody>
                                     </table>
-                                @endif
+
+                                    <table class="total w-100 mt-3">
+                                        <tbody>
+                                            <tr>
+                                                <td><h4 class="summary-subtitle">Subtotal</h4></td>
+                                                <td class="text-right">{{ $money(Cart::instance('cart')->subtotal()) }}</td>
+                                            </tr>
+                                            @if ($hasDiscount)
+                                                <tr>
+                                                    <td>Discount {{ Session::get('coupon.code') }}</td>
+                                                    <td class="text-right">-{{ $money(Session::get('discounts.discount')) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>After Discount</td>
+                                                    <td class="text-right">{{ $money(Session::get('discounts.subtotal')) }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>VAT</td>
+                                                    <td class="text-right">{{ $money(Session::get('discounts.tax')) }}</td>
+                                                </tr>
+                                                <tr class="summary-subtotal">
+                                                    <td><h4 class="summary-subtitle">Total</h4></td>
+                                                    <td class="text-right"><p class="summary-total-price ls-s">{{ $money(Session::get('discounts.total')) }}</p></td>
+                                                </tr>
+                                            @else
+                                                <tr>
+                                                    <td>Shipping</td>
+                                                    <td class="text-right">Free</td>
+                                                </tr>
+                                                <tr>
+                                                    <td>VAT</td>
+                                                    <td class="text-right">{{ $money(Cart::instance('cart')->tax()) }}</td>
+                                                </tr>
+                                                <tr class="summary-subtotal">
+                                                    <td><h4 class="summary-subtitle">Total</h4></td>
+                                                    <td class="text-right"><p class="summary-total-price ls-s">{{ $money(Cart::instance('cart')->total()) }}</p></td>
+                                                </tr>
+                                            @endif
+                                        </tbody>
+                                    </table>
+
+                                    <button type="submit" class="btn btn-dark btn-rounded btn-checkout btn-block mt-3">Place Order</button>
+                                    <p class="stripe-note">Card payments are completed on Stripe. Your cart is only cleared after the payment is verified.</p>
+                                </div>
                             </div>
-                            <div class="checkout__payment-methods">
-
-                                <div class="form-check">
-                                    <input class="form-check-input form-check-input_fill" type="radio"
-                                        name="mode" id="mode1" value="card">
-                                    <label class="form-check-label" for="mode1">
-                                        Debit or Credit Cart
-
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input form-check-input_fill" type="radio"
-                                        name="mode" id="mode2" value="paypal">
-                                    <label class="form-check-label" for="mode2">
-                                        Paypal
-                                    </label>
-                                </div>
-                                <div class="form-check">
-                                    <input class="form-check-input form-check-input_fill" type="radio"
-                                        name="mode" id="mode3" value="cod">
-                                    <label class="form-check-label" for="mode3">
-                                        Cash on delivery
-                                    </label>
-                                </div>
-
-                                <div class="policy-text">
-                                    Your personal data will be used to process your order, support your experience
-                                    throughout this
-                                    website, and for other purposes described in our <a href="terms.html"
-                                        target="_blank">privacy
-                                        policy</a>.
-                                </div>
-                            </div>
-                            <button class="btn btn-primary btn-checkout">PLACE ORDER</button>
-                        </div>
+                        </aside>
                     </div>
-                </div>
-            </form>
-        </section>
+                </form>
+            </div>
+        </div>
     </main>
 @endsection

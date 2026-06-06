@@ -25,8 +25,14 @@ class WishlistController extends Controller
         $product = Product::findOrFail($request->id);
         $quantity = max(1, (int) $request->input('quantity', 1));
         $price = $product->sale_price ?: $product->regular_price;
+        $wishlist = Cart::instance('wishlist');
+        $existingItem = $wishlist->content()->where('id', $product->id)->first();
 
-        Cart::instance('wishlist')
+        if ($existingItem) {
+            return redirect()->back()->with('success', 'Product is already in your wishlist.');
+        }
+
+        $wishlist
             ->add($product->id, $product->name, $quantity, $price, $this->cartItemOptionsFromRequest($request))
             ->associate(Product::class);
 
@@ -44,9 +50,19 @@ class WishlistController extends Controller
     }
 
     public function move_to_cart($rowId){
-        $item=Cart::instance('wishlist')->get($rowId);
+        $wishlist = Cart::instance('wishlist');
+        $item = $wishlist->get($rowId);
+
+        if (!$item) {
+            return redirect()->back()->with('error', 'Wishlist item not found.');
+        }
+
         Cart::instance('wishlist')->remove($rowId);
-        Cart::instance('cart')->add($item->id,$item->name,$item->qty,$item->price,$item->options->toArray())->associate('App\Models\Product');
+
+        Cart::instance('cart')
+            ->add($item->id, $item->name, $item->qty, $item->price, $item->options->toArray())
+            ->associate(Product::class);
+
         return redirect()->back();
     }
 

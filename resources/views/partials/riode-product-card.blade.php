@@ -13,6 +13,13 @@
     $discount = $product->sale_price
         ? max(1, round((($product->regular_price - $product->sale_price) / max($product->regular_price, 1)) * 100))
         : null;
+
+    try {
+        $wishlistContent = \Surfsidemedia\Shoppingcart\Facades\Cart::instance('wishlist')->content();
+        $wishlistItem = $wishlistContent->where('id', $product->id)->first();
+    } catch (\Throwable $exception) {
+        $wishlistItem = null;
+    }
 @endphp
 
 <div class="product text-center">
@@ -28,22 +35,30 @@
             @endif
         </div>
         <div class="product-action-vertical">
-            <form action="{{ route('cart.add') }}" method="POST" class="product-action-form">
+            <form action="{{ route('cart.add') }}" method="POST" class="product-action-form js-backend-form">
                 @csrf
                 <input type="hidden" name="id" value="{{ $product->id }}">
                 <input type="hidden" name="name" value="{{ $product->name }}">
                 <input type="hidden" name="quantity" value="1">
                 <input type="hidden" name="price" value="{{ $price }}">
-                <button type="submit" class="btn-product-icon btn-cart" title="Add to cart"><i class="d-icon-bag"></i></button>
+                <button type="submit" class="btn-product-icon js-backend-cart-button" title="Add to cart"><i class="d-icon-bag"></i></button>
             </form>
-            <form action="{{ route('wishlist.add') }}" method="POST" class="product-action-form">
-                @csrf
-                <input type="hidden" name="id" value="{{ $product->id }}">
-                <input type="hidden" name="name" value="{{ $product->name }}">
-                <input type="hidden" name="quantity" value="1">
-                <input type="hidden" name="price" value="{{ $price }}">
-                <button type="submit" class="btn-product-icon btn-wishlist" title="Add to wishlist"><i class="d-icon-heart"></i></button>
-            </form>
+            @if ($wishlistItem)
+                <form action="{{ route('wishlist.item.remove', ['rowId' => $wishlistItem->rowId]) }}" method="POST" class="product-action-form js-backend-form">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn-product-icon js-backend-wishlist-button" title="Remove from wishlist"><i class="d-icon-heart-full"></i></button>
+                </form>
+            @else
+                <form action="{{ route('wishlist.add') }}" method="POST" class="product-action-form js-backend-form">
+                    @csrf
+                    <input type="hidden" name="id" value="{{ $product->id }}">
+                    <input type="hidden" name="name" value="{{ $product->name }}">
+                    <input type="hidden" name="quantity" value="1">
+                    <input type="hidden" name="price" value="{{ $price }}">
+                    <button type="submit" class="btn-product-icon js-backend-wishlist-button" title="Add to wishlist"><i class="d-icon-heart"></i></button>
+                </form>
+            @endif
         </div>
         <div class="product-action">
             <a href="{{ route('shop.product.details', $product->slug) }}" class="btn-product btn-quickview" title="View Details">View Details</a>

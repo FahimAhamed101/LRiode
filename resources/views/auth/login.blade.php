@@ -1,91 +1,240 @@
-@extends('layouts.app')
+@extends('layouts.riode')
+
+@section('title', 'My Account - Riode Store')
+
+@push('styles')
+    <style>
+        .account-page .login-popup {
+            max-width: 54rem;
+            margin: 0 auto;
+            padding: 3.5rem 4rem 4rem;
+            border: 1px solid #eee;
+            box-shadow: 0 1rem 4rem rgba(0, 0, 0, .06);
+        }
+
+        .account-page .form-control {
+            min-height: 4.6rem;
+        }
+
+        .account-page .invalid-feedback {
+            display: block;
+            margin-top: .6rem;
+            color: #d26e4b;
+            font-size: 1.2rem;
+        }
+
+        .account-page .form-checkbox {
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+        }
+
+        .account-page .custom-checkbox {
+            width: 1.8rem;
+            height: 1.8rem;
+            border: 1px solid #ccc;
+            -webkit-appearance: auto;
+            appearance: auto;
+        }
+
+        .account-page .auth-link-row {
+            margin-top: 2.5rem;
+            color: #666;
+        }
+
+        @media (max-width: 575px) {
+            .account-page .login-popup {
+                padding: 2.5rem 2rem 3rem;
+            }
+
+            .account-page .form-footer {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+@endpush
 
 @section('content')
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="card">
-                    <div class="card-header">{{ __('Login') }}</div>
+    @php
+        $showRegister = $errors->hasAny(['name', 'mobile', 'password_confirmation'])
+            || (old('auth_tab') === 'register')
+            || request()->has('register');
+    @endphp
 
-                    <div class="card-body">
-                        <form method="POST" action="{{ route('login') }}">
-                            @csrf
+    <main class="main account-page">
+        <nav class="breadcrumb-nav">
+            <div class="container">
+                <ul class="breadcrumb">
+                    <li><a href="{{ route('home.index') }}"><i class="d-icon-home"></i></a></li>
+                    <li><a href="{{ route('shop.index') }}">Riode Shop</a></li>
+                    <li>My Account</li>
+                </ul>
+            </div>
+        </nav>
 
-                            <div class="row mb-3">
-                                <label for="email"
-                                    class="col-md-4 col-form-label text-md-end">{{ __('Email Address') }}</label>
+        <div class="page-content mt-6 pb-10 mb-10">
+            <div class="container">
+                @if (session('status'))
+                    <div class="alert alert-success alert-simple alert-inline mb-4">
+                        <h4 class="alert-title">Success:</h4> {{ session('status') }}
+                    </div>
+                @endif
 
-                                <div class="col-md-6">
-                                    <input id="email" type="email"
-                                        class="form-control @error('email') is-invalid @enderror" name="email"
-                                        value="{{ old('email') }}" required autocomplete="email" autofocus>
+                @if (session('error'))
+                    <div class="alert alert-danger alert-simple alert-inline mb-4">
+                        <h4 class="alert-title">Error:</h4> {{ session('error') }}
+                    </div>
+                @endif
 
-                                    @error('email')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong>{{ $message }}</strong>
-                                        </span>
-                                    @enderror
+                <div class="login-popup">
+                    <div class="form-box">
+                        <div class="tab tab-nav-simple tab-nav-boxed form-tab">
+                            <ul class="nav nav-tabs nav-fill align-items-center border-no justify-content-center mb-5" role="tablist">
+                                <li class="nav-item">
+                                    <a class="nav-link border-no lh-1 ls-normal {{ $showRegister ? '' : 'active' }}" href="#signin">Login</a>
+                                </li>
+                                <li class="delimiter">or</li>
+                                <li class="nav-item">
+                                    <a class="nav-link border-no lh-1 ls-normal {{ $showRegister ? 'active' : '' }}" href="#register">Register</a>
+                                </li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <div class="tab-pane {{ $showRegister ? '' : 'active in' }}" id="signin">
+                                    <form method="POST" action="{{ route('login') }}">
+                                        @csrf
+
+                                        <div class="form-group mb-3">
+                                            <input id="email" type="email" class="form-control @error('email') is-invalid @enderror"
+                                                name="email" value="{{ old('email') }}" placeholder="Email Address *" required
+                                                autocomplete="email">
+
+                                            @error('email')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-group">
+                                            <input id="password" type="password" class="form-control @error('password') is-invalid @enderror"
+                                                name="password" placeholder="Password *" required autocomplete="current-password">
+
+                                            @error('password')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-footer">
+                                            <div class="form-checkbox">
+                                                <input type="checkbox" class="custom-checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}>
+                                                <label class="form-control-label" for="remember">Remember me</label>
+                                            </div>
+
+                                            @if (Route::has('password.request'))
+                                                <a href="{{ route('password.request') }}" class="lost-link">Lost your password?</a>
+                                            @endif
+                                        </div>
+
+                                        <button class="btn btn-dark btn-block btn-rounded" type="submit">Login</button>
+                                    </form>
+
+                                    <div class="form-choice text-center">
+                                        <label class="ls-m">or Login With</label>
+                                        <div class="social-links">
+                                            <a href="#" class="social-link social-google fab fa-google border-no" title="Google"></a>
+                                            <a href="#" class="social-link social-facebook fab fa-facebook-f border-no" title="Facebook"></a>
+                                            <a href="#" class="social-link social-twitter fab fa-twitter border-no" title="Twitter"></a>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
 
-                            <div class="row mb-3">
-                                <label for="password"
-                                    class="col-md-4 col-form-label text-md-end">{{ __('Password') }}</label>
+                                <div class="tab-pane {{ $showRegister ? 'active in' : '' }}" id="register">
+                                    <form method="POST" action="{{ route('register') }}">
+                                        @csrf
+                                        <input type="hidden" name="auth_tab" value="register">
 
-                                <div class="col-md-6">
-                                    <input id="password" type="password"
-                                        class="form-control @error('password') is-invalid @enderror" name="password"
-                                        required autocomplete="current-password">
+                                        <div class="form-group mb-3">
+                                            <input id="name" type="text" class="form-control @error('name') is-invalid @enderror"
+                                                name="name" value="{{ old('name') }}" placeholder="Name *" required autocomplete="name">
 
-                                    @error('password')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong>{{ $message }}</strong>
-                                        </span>
-                                    @enderror
-                                </div>
-                            </div>
+                                            @error('name')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
 
-                            <div class="row mb-3">
-                                <div class="col-md-6 offset-md-4">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="remember" id="remember"
-                                            {{ old('remember') ? 'checked' : '' }}>
+                                        <div class="form-group mb-3">
+                                            <input id="register-email" type="email" class="form-control @error('email') is-invalid @enderror"
+                                                name="email" value="{{ old('email') }}" placeholder="Your Email address *" required autocomplete="email">
 
-                                        <label class="form-check-label" for="remember">
-                                            {{ __('Remember Me') }}
-                                        </label>
+                                            @error('email')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
 
+                                        <div class="form-group mb-3">
+                                            <input id="mobile" type="text" class="form-control @error('mobile') is-invalid @enderror"
+                                                name="mobile" value="{{ old('mobile') }}" placeholder="Mobile *" required>
+
+                                            @error('mobile')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-group mb-3">
+                                            <input id="register-password" type="password" class="form-control @error('password') is-invalid @enderror"
+                                                name="password" placeholder="Password *" required autocomplete="new-password">
+
+                                            @error('password')
+                                                <span class="invalid-feedback" role="alert">
+                                                    <strong>{{ $message }}</strong>
+                                                </span>
+                                            @enderror
+                                        </div>
+
+                                        <div class="form-group">
+                                            <input id="password-confirm" type="password" class="form-control"
+                                                name="password_confirmation" placeholder="Confirm Password *" required autocomplete="new-password">
+                                        </div>
+
+                                        <div class="form-footer">
+                                            <div class="form-checkbox">
+                                                <input type="checkbox" class="custom-checkbox" id="register-agree" required>
+                                                <label class="form-control-label" for="register-agree">I agree to the privacy policy</label>
+                                            </div>
+                                        </div>
+
+                                        <button class="btn btn-dark btn-block btn-rounded" type="submit">Register</button>
+                                    </form>
+
+                                    <div class="form-choice text-center">
+                                        <label class="ls-m">or Register With</label>
+                                        <div class="social-links">
+                                            <a href="#" class="social-link social-google fab fa-google border-no" title="Google"></a>
+                                            <a href="#" class="social-link social-facebook fab fa-facebook-f border-no" title="Facebook"></a>
+                                            <a href="#" class="social-link social-twitter fab fa-twitter border-no" title="Twitter"></a>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            <div class="row mb-0">
-                                <div class="col-md-8 offset-md-4">
-                                    <button type="submit" class="btn btn-primary">
-                                        {{ __('Login') }}
-                                    </button>
-                                    <a class="btn btn-link" href="">
-                                        {{ __('Login with Google') }}
-                                    </a>
-                                    @if (Route::has('password.request'))
-                                        <a class="btn btn-link" href="{{ route('password.request') }}">
-                                            {{ __('Forgot Your Password?') }}
-                                        </a>
-
-                                    @endif
-                                </div>
-                            </div>
-                            <div class="customer-option mt-4 text-center">
-                                <span class="text-secondary">No account yet?</span>
-                                <a href="{{ route('register') }}" class="btn-text js-show-register">Create Account</a> | <a
-                                    href="my-account.html" class="btn-text js-show-register">My Account</a>
-
-                            </div>
-
-                        </form>
+                        </div>
                     </div>
+                </div>
+
+                <div class="auth-link-row text-center">
+                    <a href="{{ route('home.index') }}" class="btn btn-link btn-underline">Return to store</a>
                 </div>
             </div>
         </div>
-    </div>
+    </main>
 @endsection

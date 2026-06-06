@@ -21,11 +21,87 @@
         .single-product-page .product-form-group {
             align-items: center;
             gap: 1rem;
+            flex-wrap: wrap;
         }
 
         .single-product-page .btn-product {
             border: 0;
             cursor: pointer;
+        }
+
+        .single-product-page .product-details {
+            padding-left: 2rem;
+        }
+
+        .single-product-page .product-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .8rem 2rem;
+        }
+
+        .single-product-page .product-price {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .single-product-page .product-stock-list {
+            display: grid;
+            gap: .7rem;
+            margin: 0 0 2rem;
+            padding: 0;
+            list-style: none;
+        }
+
+        .single-product-page .product-stock-list li {
+            display: flex;
+            align-items: baseline;
+            gap: .6rem;
+            color: #666;
+        }
+
+        .single-product-page .product-stock-list strong {
+            color: #222;
+        }
+
+        .single-product-page .product-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem 1.6rem;
+            margin-bottom: 2rem;
+        }
+
+        .single-product-page .product-options .product-form {
+            min-width: 19rem;
+            margin-bottom: 0;
+        }
+
+        .single-product-page .product-options label {
+            display: block;
+            margin-bottom: .6rem;
+        }
+
+        .single-product-page .btn-cart-submit {
+            min-width: 18rem;
+            min-height: 4.6rem;
+            padding: 1.1rem 2.4rem;
+            background: #26c;
+            color: #fff;
+            border-radius: .3rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .single-product-page .btn-cart-submit:hover {
+            background: #222;
+            color: #fff;
+        }
+
+        .single-product-page .btn-cart-submit:disabled {
+            background: #e1e5e8;
+            color: #999;
+            cursor: not-allowed;
         }
 
         .single-product-page .quantity {
@@ -34,6 +110,13 @@
 
         .single-product-page .product-single .social-links {
             align-items: center;
+        }
+
+        @media (max-width: 767px) {
+            .single-product-page .product-details {
+                padding-left: 0;
+                padding-top: 2.5rem;
+            }
         }
     </style>
 @endpush
@@ -80,9 +163,11 @@
         }
 
         $stockQuantity = (int) ($product->quntity ?? 0);
-        $stockText = $product->stock_status ?: ($stockQuantity > 0 ? 'In Stock' : 'Out of Stock');
+        $stockText = $product->stock_status === 'instock' ? 'In Stock' : 'Out of Stock';
         $variantColors = ['White', 'Black', 'Brown', 'Red', 'Green', 'Yellow'];
         $variantSizes = ['Small', 'Medium', 'Large', 'Extra Large'];
+        $selectedColor = old('color', $variantColors[0]);
+        $selectedSize = old('size', $variantSizes[1] ?? $variantSizes[0]);
         $canAddToCart = $product->stock_status !== 'outofstock' && $stockQuantity > 0;
     @endphp
 
@@ -180,51 +265,51 @@
 
                             <p class="product-short-desc">{{ $product->short_description }}</p>
 
-                            <ul class="product-list mb-4">
-                                <li>Availability: <strong>{{ $stockText }}</strong></li>
+                            <ul class="product-stock-list">
+                                <li><span>Availability:</span><strong>{{ $stockText }}</strong></li>
                                 @if ($stockQuantity > 0)
-                                    <li>Only <strong>{{ $stockQuantity }}</strong> left in stock.</li>
+                                    <li><span>Stock:</span><strong>Only {{ $stockQuantity }} left</strong></li>
                                 @endif
                                 @if ($product->brand)
-                                    <li>Brand: <strong>{{ $product->brand->name }}</strong></li>
+                                    <li><span>Brand:</span><strong>{{ $product->brand->name }}</strong></li>
                                 @endif
                             </ul>
 
-                            <form action="{{ route('cart.add') }}" method="POST" class="product-form product-qty">
+                            <form action="{{ route('cart.add') }}" method="POST" class="product-form product-qty js-backend-form">
                                 @csrf
                                 <input type="hidden" name="id" value="{{ $product->id }}">
                                 <input type="hidden" name="name" value="{{ $product->name }}">
                                 <input type="hidden" name="price" value="{{ $cartPrice }}">
                                 <input type="hidden" name="has_variants" value="1">
 
-                                <div class="product-form product-variations product-color mb-3">
-                                    <label for="product-color">Color:</label>
-                                    <div class="select-box">
-                                        <select name="color" id="product-color" class="form-control" required>
-                                            <option value="">Choose a Color</option>
-                                            @foreach ($variantColors as $color)
-                                                <option value="{{ $color }}" @selected(old('color') === $color)>{{ $color }}</option>
-                                            @endforeach
-                                        </select>
+                                <div class="product-options">
+                                    <div class="product-form product-color">
+                                        <label for="product-color">Color:</label>
+                                        <div class="select-box">
+                                            <select name="color" id="product-color" class="form-control" required>
+                                                @foreach ($variantColors as $color)
+                                                    <option value="{{ $color }}" @selected($selectedColor === $color)>{{ $color }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        @error('color')
+                                            <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                        @enderror
                                     </div>
-                                    @error('color')
-                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
-                                    @enderror
-                                </div>
 
-                                <div class="product-form product-variations product-size mb-4">
-                                    <label for="product-size">Size:</label>
-                                    <div class="select-box">
-                                        <select name="size" id="product-size" class="form-control" required>
-                                            <option value="">Choose a Size</option>
-                                            @foreach ($variantSizes as $size)
-                                                <option value="{{ $size }}" @selected(old('size') === $size)>{{ $size }}</option>
-                                            @endforeach
-                                        </select>
+                                    <div class="product-form product-size">
+                                        <label for="product-size">Size:</label>
+                                        <div class="select-box">
+                                            <select name="size" id="product-size" class="form-control" required>
+                                                @foreach ($variantSizes as $size)
+                                                    <option value="{{ $size }}" @selected($selectedSize === $size)>{{ $size }}</option>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        @error('size')
+                                            <small class="text-danger d-block mt-1">{{ $message }}</small>
+                                        @enderror
                                     </div>
-                                    @error('size')
-                                        <small class="text-danger d-block mt-1">{{ $message }}</small>
-                                    @enderror
                                 </div>
 
                                 <div class="product-form-group">
@@ -233,7 +318,7 @@
                                         <input class="quantity form-control" name="quantity" type="number" min="1" max="{{ $stockQuantity ?: 1 }}" value="1" title="Quantity" @disabled(! $canAddToCart)>
                                         <button class="quantity-plus d-icon-plus" type="button" title="Increase quantity" @disabled(! $canAddToCart)></button>
                                     </div>
-                                    <button type="submit" class="btn-product btn-cart text-normal ls-normal" @disabled(! $canAddToCart)>
+                                    <button type="submit" class="btn-product btn-cart-submit text-normal ls-normal" @disabled(! $canAddToCart)>
                                         <i class="d-icon-bag"></i>{{ $canAddToCart ? 'Add to Cart' : 'Out of Stock' }}
                                     </button>
                                 </div>

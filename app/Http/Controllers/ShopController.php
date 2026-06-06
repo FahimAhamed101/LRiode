@@ -11,78 +11,87 @@ class ShopController extends Controller
 {
     public function index(Request $request)
     {
-        $size = $request->query('size') ? $request->query('size') : 12;
-        $o_colum = "";
-        $o_order = "";
-        $order = $request->query('order') ? $request->query('order') : -1;
-        $f_brands = $request->query('brands', '');
-        $f_categories = $request->query('categories', '');
-        $min_price = $request->query(key: 'min') ? $request->query('min') : 1;
-        $max_price = $request->query('max') ? $request->query('max') : 500;
+        $size = (int) $request->query('size', 12);
+        $size = in_array($size, [12, 24, 36, 48], true) ? $size : 12;
+        $order = (int) $request->query('order', -1);
 
-        switch ($order) {
-            case 1:
-                $o_colum = 'created_at';
-                $o_order = 'DESC';
-                break;
-            case 2:
-                $o_colum = 'created_at';
-                $o_order = 'ASC';
-                break;
-            case 3:
-                $o_colum = 'sale_price';
-                $o_order = 'ASC';
-                break;
-            case 4:
-                $o_colum = 'sale_price';
-                $o_order = 'DESC';
-                break;
-            default:
-                $o_colum = 'id';
-                $o_order = 'DESC';
+        $selectedBrands = $this->filterIds($request->query('brands', ''));
+        $selectedCategories = $this->filterIds($request->query('categories', ''));
+        $f_brands = implode(',', $selectedBrands);
+        $f_categories = implode(',', $selectedCategories);
 
+        $priceCeiling = (float) Product::query()
+            ->selectRaw('GREATEST(COALESCE(MAX(regular_price), 0), COALESCE(MAX(sale_price), 0)) as max_price')
+            ->value('max_price');
+        $priceCeiling = max(500, (int) ceil($priceCeiling));
+
+        $min_price = max(0, (float) $request->query('min', 0));
+        $max_price = min($priceCeiling, (float) $request->query('max', $priceCeiling));
+
+        if ($min_price > $max_price) {
+            [$min_price, $max_price] = [$max_price, $min_price];
         }
-        $brands = Brand::orderBy('name', 'ASC')->get();
-        $categories = Category::orderBy('name', 'ASC')->get();
-        /*  $products = Product::where(function($query) use($f_brands){
-             $query->whereIn('brand_id',explode(',',$f_brands))->orWhereRaw("'".$f_brands."'=''");
-         })
-         ->orderBy($o_colum, $o_order)->paginate(12); */
 
-        /* $products = Product::
-            when(!empty($f_brands), function ($query) use ($f_brands) {
-                return $query->whereIn('brand_id', explode(',', $f_brands));
-            })
-            ->when(!empty($f_categories), function ($query) use ($f_categories) {
-                return $query->whereIn('category_id', explode(',', $f_categories));
-            })
-            ->when( function ($query) use ($min_price, $max_price) {
-                return $query->whereBetween('regular_price', [$min_price, $max_price])
-                    ->orWhereBetween('sale_price', [$min_price, $max_price]);
-                //return $query->where('sale_price','>=',$max_price)->where('regular_price ','<=',$max_price);
-            })
-            ->orderBy($o_colum, $o_order)
-            ->paginate(12); */
+        $brands = Brand::withCount('products')->orderBy('name', 'ASC')->get();
+        $categories = Category::withCount('products')->orderBy('name', 'ASC')->get();
 
-            $products = Product::query()
-            ->when(!empty($f_brands), function ($query) use ($f_brands) {
-                return $query->whereIn('brand_id', explode(',', $f_brands));
+        $productsQuery = Product::with(['category', 'brand'])
+            ->when($selectedBrands, function ($query) use ($selectedBrands) {
+                $query->whereIn('brand_id', $selectedBrands);
             })
-            ->when(!empty($f_categories), function ($query) use ($f_categories) {
-                return $query->whereIn('category_id', explode(',', $f_categories));
+            ->when($selectedCategories, function ($query) use ($selectedCategories) {
+                $query->whereIn('category_id', $selectedCategories);
             })
-            ->when($min_price !== null && $max_price !== null, function ($query) use ($min_price, $max_price) {
-                return $query->where(function ($q) use ($min_price, $max_price) {
-                    $q->whereBetween('regular_price', [$min_price, $max_price])
-                      ->orWhereBetween('sale_price', [$min_price, $max_price]);
+            ->where(function ($query) use ($min_price, $max_price) {
+                $query->where(function ($saleQuery) use ($min_price, $max_price) {
+                    $saleQuery->whereNotNull('sale_price')
+                        ->where('sale_price', '>', 0)
+                        ->whereBetween('sale_price', [$min_price, $max_price]);
+                })->orWhere(function ($regularQuery) use ($min_price, $max_price) {
+                    $regularQuery->where(function ($emptySaleQuery) {
+                        $emptySaleQuery->whereNull('sale_price')
+                            ->orWhere('sale_price', '<=', 0);
+                    })->whereBetween('regular_price', [$min_price, $max_price]);
                 });
-            })
-            ->orderBy($o_colum, $o_order)
-            ->paginate(12);
+            });
 
+        match ($order) {
+            1 => $productsQuery->latest(),
+            2 => $productsQuery->oldest(),
+            3 => $productsQuery->orderByRaw('CASE WHEN sale_price IS NOT NULL AND sale_price > 0 THEN sale_price ELSE regular_price END ASC'),
+            4 => $productsQuery->orderByRaw('CASE WHEN sale_price IS NOT NULL AND sale_price > 0 THEN sale_price ELSE regular_price END DESC'),
+            default => $productsQuery->latest('id'),
+        };
 
+        $products = $productsQuery->paginate($size)->withQueryString();
 
-        return view('shop', compact('products', 'size', 'order', 'brands', 'f_brands', 'categories', 'f_categories', 'min_price', 'max_price'));
+        return view('shop', compact(
+            'products',
+            'size',
+            'order',
+            'brands',
+            'f_brands',
+            'categories',
+            'f_categories',
+            'min_price',
+            'max_price',
+            'priceCeiling',
+            'selectedBrands',
+            'selectedCategories'
+        ));
+    }
+
+    private function filterIds(mixed $value): array
+    {
+        $values = is_array($value) ? $value : explode(',', (string) $value);
+
+        return collect($values)
+            ->flatMap(fn ($item) => explode(',', (string) $item))
+            ->map(fn ($item) => (int) trim((string) $item))
+            ->filter(fn ($item) => $item > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function product_details($product_slug)

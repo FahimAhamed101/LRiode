@@ -5,6 +5,18 @@
         <section class="shop-checkout container">
             <h2 class="page-title">Wishlist</h2>
 
+            @if (session('success'))
+                <div class="alert alert-success alert-simple alert-inline mb-4">
+                    <h4 class="alert-title">Success:</h4> {{ session('success') }}
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="alert alert-danger alert-simple alert-inline mb-4">
+                    <h4 class="alert-title">Error:</h4> {{ session('error') }}
+                </div>
+            @endif
+
             @if (Cart::instance('wishlist')->content()->count() > 0)
                 <div class="shopping-cart">
                     <div class="cart-table__wrapper">

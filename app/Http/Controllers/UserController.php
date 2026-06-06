@@ -8,6 +8,7 @@ use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Surfsidemedia\Shoppingcart\Facades\Cart;
 
 class UserController extends Controller
 {
@@ -45,7 +46,8 @@ class UserController extends Controller
     }
 
     public function wishlist(){
-        
+        $items = Cart::instance('wishlist')->content();
+        return view('user.account-wishlist', compact('items'));
     }
 
 }

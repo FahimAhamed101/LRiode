@@ -1,337 +1,131 @@
 @extends('layouts.app')
+
 @section('content')
-<main class="pt-90">
-    <div class="mb-4 pb-4"></div>
-    <section class="my-account container">
-      <h2 class="page-title">Wishlist</h2>
-      <div class="row">
-        <div class="col-lg-3">
-          <ul class="account-nav">
-            <li><a href="my-account.html" class="menu-link menu-link_us-s menu-link_active">Dashboard</a></li>
-            <li><a href="account-orders.html" class="menu-link menu-link_us-s">Orders</a></li>
-            <li><a href="account-address.html" class="menu-link menu-link_us-s">Addresses</a></li>
-            <li><a href="account-details.html" class="menu-link menu-link_us-s">Account Details</a></li>
-            <li><a href="account-wishlist.html" class="menu-link menu-link_us-s">Wishlist</a></li>
-            <li><a href="login.html" class="menu-link menu-link_us-s">Logout</a></li>
-          </ul>
-        </div>
-        <div class="col-lg-9">
-          <div class="page-content my-account__wishlist">
-            <div class="products-grid row row-cols-2 row-cols-lg-3" id="products-grid">
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_5.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_5-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
-                    </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
+    @php
+        $wishlistItems = collect($items ?? []);
+    @endphp
 
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Colorful Jacket</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price">$29</span>
-                    </div>
+    <main class="pt-90">
+        <div class="mb-4 pb-4"></div>
+        <section class="my-account container">
+            <h2 class="page-title">Wishlist</h2>
 
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
+            <div class="row">
+                <div class="col-lg-3">
+                    @include('user.account-nav')
                 </div>
-              </div>
 
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_6.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_6-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
+                <div class="col-lg-9">
+                    <div class="page-content my-account__wishlist">
+                        @if (session('success'))
+                            <div class="alert alert-success alert-simple alert-inline mb-4">
+                                <h4 class="alert-title">Success:</h4> {{ session('success') }}
+                            </div>
+                        @endif
+
+                        @if (session('error'))
+                            <div class="alert alert-danger alert-simple alert-inline mb-4">
+                                <h4 class="alert-title">Error:</h4> {{ session('error') }}
+                            </div>
+                        @endif
+
+                        @if ($wishlistItems->isNotEmpty())
+                            <div class="shopping-cart">
+                                <div class="cart-table__wrapper">
+                                    <table class="cart-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th></th>
+                                                <th>Price</th>
+                                                <th>Quantity</th>
+                                                <th>Action</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach ($wishlistItems as $item)
+                                                @php
+                                                    $product = $item->model;
+                                                    $image = optional($product)->image ?: 'product1.jpg';
+                                                    $productUrl = $product
+                                                        ? route('shop.product.details', $product->slug)
+                                                        : route('shop.index');
+                                                    $imageUrl = \Illuminate\Support\Str::startsWith($image, ['http://', 'https://', 'riode/', 'uploads/'])
+                                                        ? asset($image)
+                                                        : asset('uploads/products/thumbnails/' . $image);
+                                                    $itemOptions = collect($item->options)->filter(fn ($value) => filled($value));
+                                                @endphp
+                                                <tr>
+                                                    <td>
+                                                        <div class="shopping-cart__product-item">
+                                                            <a href="{{ $productUrl }}">
+                                                                <img loading="lazy" src="{{ $imageUrl }}" width="120" height="120" alt="{{ $item->name }}" />
+                                                            </a>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div class="shopping-cart__product-item__detail">
+                                                            <h4>
+                                                                <a href="{{ $productUrl }}">
+                                                                    {{ $item->name }}
+                                                                </a>
+                                                            </h4>
+                                                            @if ($itemOptions->isNotEmpty())
+                                                                <ul class="shopping-cart__product-item__options">
+                                                                    @foreach ($itemOptions as $optionName => $optionValue)
+                                                                        <li>{{ \Illuminate\Support\Str::headline($optionName) }}: {{ $optionValue }}</li>
+                                                                    @endforeach
+                                                                </ul>
+                                                            @endif
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span class="shopping-cart__product-price">${{ number_format((float) $item->price, 2) }}</span>
+                                                    </td>
+                                                    <td>
+                                                        {{ $item->qty }}
+                                                    </td>
+                                                    <td>
+                                                        <div class="d-flex flex-wrap gap-2">
+                                                            <form method="POST" action="{{ route('wishlist.to.cart', ['rowId' => $item->rowId]) }}">
+                                                                @csrf
+                                                                <button type="submit" class="btn btn-sm btn-warning">Move to Cart</button>
+                                                            </form>
+
+                                                            <form action="{{ route('wishlist.item.remove', ['rowId' => $item->rowId]) }}" method="POST" id="remove-item-{{ $item->rowId }}">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                    <td></td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div class="cart-table-footer mt-4">
+                                    <form action="{{ route('wishlist.empty') }}" method="POST">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-light" type="submit">Clear Wishlist</button>
+                                    </form>
+                                </div>
+                            </div>
+                        @else
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <p>No item found in your wishlist.</p>
+                                    <a href="{{ route('shop.index') }}" class="btn btn-info">Continue Shopping</a>
+                                </div>
+                            </div>
+                        @endif
                     </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Shirt In Botanical Cheetah Print</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price">$62</span>
-                    </div>
-
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
                 </div>
-              </div>
-
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_7.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_7-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
-                    </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Cotton Jersey T-Shirt</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price">$17</span>
-                    </div>
-
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_8.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_8-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
-                    </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Zessi Dresses</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price price-old">$129</span>
-                      <span class="money price price-sale">$99</span>
-                    </div>
-
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_9.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_9-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
-                    </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Cropped Faux Leather Jacket</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price">$29</span>
-                    </div>
-
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div class="product-card-wrapper">
-                <div class="product-card mb-3 mb-md-4 mb-xxl-5">
-                  <div class="pc__img-wrapper">
-                    <div class="swiper-container background-img js-swiper-slider"
-                      data-settings='{"resizeObserver": true}'>
-                      <div class="swiper-wrapper">
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_10.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                        <div class="swiper-slide">
-                          <img loading="lazy" src="assets/images/products/product_10-1.jpg" width="330" height="400"
-                            alt="Cropped Faux leather Jacket" class="pc__img">
-                        </div>
-                      </div>
-                      <span class="pc__img-prev"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_prev_sm" />
-                        </svg></span>
-                      <span class="pc__img-next"><svg width="7" height="11" viewBox="0 0 7 11"
-                          xmlns="http://www.w3.org/2000/svg">
-                          <use href="#icon_next_sm" />
-                        </svg></span>
-                    </div>
-                    <button class="btn-remove-from-wishlist">
-                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_close" />
-                      </svg>
-                    </button>
-                  </div>
-
-                  <div class="pc__info position-relative">
-                    <p class="pc__category">Dresses</p>
-                    <h6 class="pc__title">Calvin Shorts</h6>
-                    <div class="product-card__price d-flex">
-                      <span class="money price">$62</span>
-                    </div>
-
-                    <button class="pc__btn-wl position-absolute top-0 end-0 bg-transparent border-0 js-add-wishlist"
-                      title="Add To Wishlist">
-                      <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <use href="#icon_heart" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
+        </section>
+    </main>
 @endsection
-@push('scripts')
-    <script>
-        $(function() {
-            $('.cancel-order').on('click', function(event) {
-                event.preventDefault();
-                var form = $(this).closest('form');
-                swal({
-                    title: "Are you sure?",
-                    text: "You want to cancel this order ?",
-                    type: "warning",
-                    buttons: ["No", "Yes"],
-                    confirmButtonColor: '#FF0019FF'
-                }).then(function(result) {
-                    if (result) {
-                        form.submit();
-                    }
-                });
-            });
-        });
-    </script>
-@endpush
