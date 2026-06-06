@@ -146,7 +146,7 @@
                             </div>
                         </a>
                         <span class="divider"></span>
-                        <a href="{{ route('wishlist.index') }}" class="wishlist-toggle wishlist-link">
+                        <a href="{{ route('wishlist.index') }}" class="wishlist-link d-inline-flex align-items-center position-relative" aria-label="Wishlist" title="Wishlist">
                             <i class="d-icon-heart"></i>
                             @if ($wishlistCount > 0)
                                 <span class="cart-count js-wishlist-count">{{ $wishlistCount }}</span>
